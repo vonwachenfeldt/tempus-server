@@ -10,17 +10,33 @@ class Utils {
 
     static getVideoId(url) {
         url = url.split(" ").join(""); // remove spaces
+
+        if (!isValidHttpUrl(url))
+            return;
+
         const hostname = new URL(url).hostname.replace("www.", "");
 
         if (hostname === "youtube.com" || hostname === "youtu.be") {
             if (hostname === "youtube.com")
                 return new URL(url).search.replace("?v=", "");
-            if (hostname === "youtu.be") 
+            if (hostname === "youtu.be")
                 return new URL(url).pathname.replace("/", "");
         }
-        
+
         // Wasn't a youtube url
         return;
+    }
+
+    static isValidHttpUrl(string) {
+        let url;
+
+        try {
+            url = new URL(string);
+        } catch (_) {
+            return false;
+        }
+
+        return url.protocol === "http:" || url.protocol === "https:";
     }
 }
 
