@@ -78,6 +78,19 @@ class Client {
         else if (sendType === this.SendType.Broadcast)
             this.session.broadcast(res);
     }
+
+    sendError(erroMessage, originalMessage) {
+        // Send back a formatted response with type, success, original message and the data
+        const res = {
+            type: originalMessage.type,
+            success: false,
+
+            originalMessage: originalMessage,
+            error: erroMessage,
+        }
+
+        this.send(res);
+    }
 }
 
 module.exports = Client;

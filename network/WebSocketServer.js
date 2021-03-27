@@ -56,6 +56,9 @@ const handleMessage = async (client, message) => {
             } 
 
             case "state-update": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", message);
+
                 client.session.videoData = message.data;
 
                 client.sendResponse(message.data, message, client.SendType.Broadcast);
