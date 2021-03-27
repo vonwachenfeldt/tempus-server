@@ -110,7 +110,12 @@ const handleMessage = async (client, message) => {
 
                 const url = message.data.url;
                 const videoId = Utils.getVideoId(message.data.url);
+                if (!videoId)
+                    return client.sendError("Not a youtube video", message);
+
                 const videoData = await YoutubeApi.getVideoDetails(videoId);
+                if (!videoData.items)
+                    return client.sendError("Failed to get video details", message);
 
                 const title = videoData.items[0].snippet.title;
                 const channel = videoData.items[0].snippet.channelTitle;
