@@ -73,6 +73,9 @@ class Client {
             data: response
         }
 
+        // Set who the message was sent by
+        res.originalMessage.sentBy = this.id;
+
         // Add all the client ids
         if (sendType == this.SendType.Broadcast)
             res.clients = [...this.session.clients].map(client => ({ id: client.id, isMe: client.id == this.id }));
@@ -92,6 +95,9 @@ class Client {
             originalMessage: originalMessage,
             error: erroMessage,
         }
+
+        // Set who the message was sent by
+        res.originalMessage.sentBy = this.id;
 
         this.send(res);
     }
