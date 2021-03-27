@@ -18,6 +18,9 @@ class Utils {
             if (hostname === "youtu.be") 
                 return new URL(url).pathname.replace("/", "");
         }
+        
+        // Wasn't a youtube url
+        return;
     }
 }
 
