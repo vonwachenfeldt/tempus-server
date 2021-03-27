@@ -6,10 +6,11 @@ class Session
         this.clients = new Set; 
 
         this.videoData = {
-            videoTimestamp: 0, 
-            videoPlaybackSpeed: 1, 
+            timestamp: 0, 
+            playbackSpeed: 1, 
             isPaused: true,
-            videoId: ""
+            currentVideoId: "",
+            queue: []
         };
     }
 

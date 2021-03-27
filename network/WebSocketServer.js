@@ -59,9 +59,44 @@ const handleMessage = async (client, message) => {
                 if (!client.session)
                     return client.sendError("You are not in a session", message);
 
-                client.session.videoData = message.data;
+                const { timestamp, playbackSpeed, isPaused, currentVideoId } = message.data;
+
+                client.session.videoData.timestamp = timestamp;
+                client.session.videoData.playbackSpeed = playbackSpeed;
+                client.session.videoData.isPaused = isPaused;
+                client.session.videoData.currentVideoId = currentVideoId;
 
                 client.sendResponse(message.data, message, client.SendType.Broadcast);
+
+                break;
+            }
+
+            case "play-video": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", message);
+
+                const videoId = Utils.getVideoId(message.data.videoUrl);
+
+                client.session.videoData.currentVideoId = videoId;
+
+                console.log("Playing video '%s'", videoId);
+
+                client.sendResponse({ currentVideoId: message.data.videoId }, message, client.SendType.Broadcast);
+
+                break;
+            }
+
+            case "queue-video": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", message);
+
+                const videoId = Utils.getVideoId(message.data.videoUrl);
+
+                client.session.videoData.queue.push(videoId);
+
+                console.log("Queing video '%s'", videoId);
+
+                client.sendResponse({ videoQueue: client.session.videoData.queue }, message, client.SendType.Broadcast);
 
                 break;
             }
