@@ -75,7 +75,7 @@ class Client {
 
         // Add all the client ids
         if (sendType == this.SendType.Broadcast)
-            res.clients = this.session.clients.map(client => ({ id: client.id, isMe: client.id == this.id }));
+            res.clients = [...this.session.clients].map(client => ({ id: client.id, isMe: client.id == this.id }));
 
         if (sendType === this.SendType.Single) 
             this.send(res);
