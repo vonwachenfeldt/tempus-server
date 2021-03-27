@@ -47,7 +47,8 @@ const handleMessage = async (client, message) => {
                 client.joinSession(sessions, sessionId);
 
                 const response = {
-                    sessionId: sessionId
+                    sessionId: sessionId,
+                    clientId: client.id
                 }
 
                 client.sendResponse(response, message, client.SendType.Single);
