@@ -8,7 +8,8 @@ class Session
         this.videoData = {
             videoTimestamp: 0, 
             videoPlaybackSpeed: 1, 
-            isPaused: true
+            isPaused: true,
+            videoId: ""
         };
     }
 
