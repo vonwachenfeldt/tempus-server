@@ -4,6 +4,8 @@ const Client = require("./Client");
 
 const Utils = require("../utils/Utils");
 
+const YoutubeApi = require("../utils/YoutubeApi");
+
 const pingTime = process.env.WEBSOCKET_PING_TIME || 30000;
 
 const logPingMessages = process.env.WEBSOCKET_LOG_PINGPONG_MESSAGES || false;
@@ -98,6 +100,29 @@ const handleMessage = async (client, message) => {
                 console.log("Queing video '%s'", videoId);
 
                 client.sendResponse({ videoQueue: client.session.videoData.queue }, message, client.SendType.Broadcast);
+
+                break;
+            }
+
+            case "get-video-metadata": {
+                if (!message.data.url)
+                    return client.sendError("No video url specified", message);
+
+                const url = message.data.url;
+                const videoId = Utils.getVideoId(message.data.url);
+                const videoData = await YoutubeApi.getVideoDetails(videoId);
+
+                const title = videoData.items[0].snippet.title;
+                const channel = videoData.items[0].snippet.channelTitle;
+
+                const response = {
+                    title,
+                    channel,
+                    url,
+                    videoId
+                };
+            
+                client.sendResponse(response, message, client.SendType.Broadcast);
 
                 break;
             }
