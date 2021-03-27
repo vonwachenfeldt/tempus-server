@@ -23,7 +23,7 @@ module.exports = () => {
     const PORT = process.env.PORT || 3500;
 
     // Connect to the database, then start http and WebSocket server
-    module.startServer = async (server, path = "/") => {
+    module.startServer = async (server, path = "/ws") => {
         // Connect to database here
 
         const WebSocketServer = require('./network/WebSocketServer');
