@@ -43,5 +43,5 @@ module.exports = () => {
 
     module.app = app;
 
-    return module;
+    return module; 
 }
