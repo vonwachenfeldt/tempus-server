@@ -205,8 +205,8 @@ const disconnectClient = (client) => {
     client.terminate();
 }
 
-function broadcastClients(client, diff = 0) {
-    var watchers =  client.session.clients.size - diff;
+function broadcastClients(client, manualDiff = 0) {
+    var watchers =  client.session.clients.size + manualDiff;
 
     const response = {
         watchers
