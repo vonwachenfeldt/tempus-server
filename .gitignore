@@ -1,6 +1,6 @@
 # dependencies
 /node_modules
 
-secrets.env
+#secrets.env
 
 test.html
