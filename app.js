@@ -20,7 +20,7 @@ global.webSocketLogLevel = process.env.WEBSOCKET_LOG_LEVEL || WebSocketLogLevels
 module.exports = () => {
     const module = {};
 
-    const PORT = process.env.PORT || 3500;
+    const PORT = process.env.app_port || 3500;
 
     // Connect to the database, then start http and WebSocket server
     module.startServer = async (server, path = "/tempus") => {
