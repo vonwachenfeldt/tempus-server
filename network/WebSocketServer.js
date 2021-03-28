@@ -27,13 +27,13 @@ const onConnection = (conn) => {
     const client = new Client(conn, Utils.createId());
 
     if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
-        console.log("Client '%s' connected", client.id);
+        console.log("Client '%s' connected", client.id); 
 
     // Remove the client from any sessions
     conn.on("close", () => disconnectClient(client));
 
     // Handle messages
-    conn.on("message", message => handleMessage(client, JSON.parse(message)));
+    conn.on("message", message => handleMessage(client, message)); 
 
     // Setup ping pong
     client.pingPongTimer = setInterval(() => pingPong(client), pingTime);
@@ -41,6 +41,8 @@ const onConnection = (conn) => {
 
 const handleMessage = async (client, message) => {
     try {
+        message = JSON.parse(message); // Parse
+
         switch (message.type) {
             // Sessions
             case "join-session": {
@@ -196,7 +198,7 @@ const disconnectClient = (client) => {
     } else {
         if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
             console.log("Client '%s' disconnected", client.id);
-    }
+    } 
 
     // Remove the ping pong
     clearInterval(client.pingPongTimer);
