@@ -54,6 +54,7 @@ const handleMessage = async (client, message) => {
                 }
 
                 client.sendResponse(response, message, client.SendType.Single);
+                broadcastClients(client);
 
                 break;
             } 
@@ -132,6 +133,13 @@ const handleMessage = async (client, message) => {
                 break;
             }
 
+            case "broadcast-clients": {
+
+                broadcastClients(client);
+
+                break;
+            }
+
             // Ping Pong
             case "pong": {
                 client.isAlive = true; // The client is still connected
@@ -170,6 +178,8 @@ const disconnectClient = (client) => {
             
     // If the client is in a session
     if (session) {
+        broadcastClients(client);
+        
         session.leave(client); // Remove the client from the session
 
         if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
@@ -192,6 +202,16 @@ const disconnectClient = (client) => {
 
     // Terminate the connection
     client.terminate();
+}
+
+function broadcastClients(client) {
+    var watchers =  client.session.clients.size;
+
+    const response = {
+        watchers
+    }
+
+    client.sendResponse(response, {type: "broadcast-clients"}, client.SendType.Broadcast);
 }
 
 module.exports = start;
