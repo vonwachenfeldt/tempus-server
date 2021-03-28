@@ -28,7 +28,7 @@ module.exports = () => {
 
         const WebSocketServer = require('./network/WebSocketServer');
         
-        // Set up http routes here
+        // Set up http routes here 
 
         // Create and start the server manually if none is specified
         if (!server) {
