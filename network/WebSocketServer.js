@@ -162,7 +162,7 @@ const handleMessage = async (client, message) => {
             case "pong": {
                 client.isAlive = true; // The client is still connected
 
-                if (logPingMessages) console.log("Received pong from client '%s'", client.id);
+                //if (logPingMessages) console.log("Received pong from client '%s'", client.id);
                 
                 break;
             }
@@ -186,7 +186,7 @@ const pingPong = (client) => {
     // Default the client to being disconnected, but if a pong message is received from them they are considered still alive
     client.isAlive = false;
 
-    if (logPingMessages) console.log("Sending ping to client '%s'", client.id);
+    //if (logPingMessages) console.log("Sending ping to client '%s'", client.id);
 
     client.ping();
 }
