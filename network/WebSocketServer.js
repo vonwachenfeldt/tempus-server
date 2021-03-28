@@ -93,17 +93,78 @@ const handleMessage = async (client, message) => {
                 break;
             }
 
+            case "play-next-video": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", message);
+
+                // Only play the next video if one exists
+                if (client.session.videoData.queue.length == 0)
+                    return;
+
+                console.log(client.session.videoData.queue);
+
+                const nextVideo = JSON.parse(JSON.stringify(client.session.videoData.queue[0]));
+                client.session.videoData.queue.shift(); // Remove the video from the queue
+
+                const videoId = Utils.getVideoId(nextVideo.url);
+
+                client.session.videoData.currentVideoId = videoId;
+
+                console.log("Playing next video '%s'", videoId);
+
+
+
+                client.sendResponse({ video: nextVideo, queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
+
+                break;
+            }
+
             case "queue-video": {
                 if (!client.session)
                     return client.sendError("You are not in a session", message);
 
-                const videoId = Utils.getVideoId(message.data.videoUrl);
+                    if (!message.data.url)
+                    return client.sendError("No video url specified", message);
 
-                client.session.videoData.queue.push(videoId);
+                const url = message.data.url;
+                const videoId = Utils.getVideoId(message.data.url);
+                if (!videoId)
+                    return client.sendError("Not a youtube video", message);
 
-                console.log("Queing video '%s'", videoId);
+                const videoData = await YoutubeApi.getVideoDetails(videoId);
+                if (!videoData.items)
+                    return client.sendError("Failed to get video details", message);
 
-                client.sendResponse({ videoQueue: client.session.videoData.queue }, message, client.SendType.Broadcast);
+                const title = videoData.items[0].snippet.title;
+                const channel = videoData.items[0].snippet.channelTitle;
+
+                // Get video duration in minutes
+                const durationString = videoData.items[0].contentDetails.duration
+                const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
+    
+                // Minutes, seconds
+                console.log(arrOfTime)
+                var duration = 0;
+                if (arrOfTime.length === 1) // Seconds
+                    duration = parseInt(arrOfTime[0]) / 60;
+                else if (arrOfTime.length === 2) // Minutes, seconds
+                    duration = parseInt(arrOfTime[0]) + parseInt(arrOfTime[1]) / 60;
+                else if (arrOfTime.length === 3) // Hours, minutes, seconds
+                    duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
+
+                const data = {
+                    title,
+                    channel,
+                    url,
+                    videoId,
+                    duration
+                };
+
+                client.session.videoData.queue.push(data);
+
+                console.log("Queing video '%s'", data.videoId);
+
+                client.sendResponse({ queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
 
                 break;
             }
