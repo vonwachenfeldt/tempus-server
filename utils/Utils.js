@@ -11,7 +11,7 @@ class Utils {
     static getVideoId(url) {
         url = url.split(" ").join(""); // remove spaces
 
-        if (!isValidHttpUrl(url))
+        if (!this.isValidHttpUrl(url))
             return;
 
         const hostname = new URL(url).hostname.replace("www.", "");
