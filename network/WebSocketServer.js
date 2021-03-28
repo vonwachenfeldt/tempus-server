@@ -124,11 +124,26 @@ const handleMessage = async (client, message) => {
                 const title = videoData.items[0].snippet.title;
                 const channel = videoData.items[0].snippet.channelTitle;
 
+                // Get video duration in minutes
+                const durationString = videoData.items[0].contentDetails.duration
+                const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
+    
+                // Minutes, seconds
+                console.log(arrOfTime)
+                var duration = 0;
+                if (arrOfTime.length === 1) // Seconds
+                    duration = parseInt(arrOfTime[0]) / 60;
+                else if (arrOfTime.length === 2) // Minutes, seconds
+                    duration = parseInt(arrOfTime[0]) + parseInt(arrOfTime[1]) / 60;
+                else if (arrOfTime.length === 3) // Hours, minutes, seconds
+                    duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
+
                 const response = {
                     title,
                     channel,
                     url,
-                    videoId
+                    videoId,
+                    duration
                 };
             
                 client.sendResponse(response, message, client.SendType.Broadcast);
