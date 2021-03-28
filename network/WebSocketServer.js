@@ -178,9 +178,9 @@ const disconnectClient = (client) => {
             
     // If the client is in a session
     if (session) {
-        broadcastClients(client);
-        
         session.leave(client); // Remove the client from the session
+
+        broadcastClients(client);
 
         if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
             console.log("Client '%s' disconnected, %s clients remaining in session '%s'", client.id, session.clients.size, session.id);
