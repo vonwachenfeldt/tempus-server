@@ -50,7 +50,8 @@ const handleMessage = async (client, message) => {
 
                 const response = {
                     sessionId: sessionId,
-                    clientId: client.id
+                    clientId: client.id,
+                    state: client.session.videoData
                 }
 
                 client.sendResponse(response, message, client.SendType.Single);
