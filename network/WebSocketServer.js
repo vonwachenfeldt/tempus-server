@@ -140,8 +140,7 @@ const handleMessage = async (client, message) => {
                     duration
                 };
 
-
-                if (client.session.videoData.queue.length == 0) {
+                if (client.session.videoData.queue.length == 0 && !client.session.videoData.currentVideoId) {
                     // Add
                     client.session.videoData.queue.push(data);
                     playNextVideo(client);
