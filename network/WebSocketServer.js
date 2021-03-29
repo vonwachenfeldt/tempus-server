@@ -155,6 +155,21 @@ const handleMessage = async (client, message) => {
                 break;
             }
 
+            case "delete-queue-entry": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", message);
+                
+                var queue = client.session.videoData.queue;
+                const entry = queue.find(item => item.id == message.data.id);
+                if(!entry) return client.sendError("Invalid ID", message);
+                const index = queue.indexOf(entry);
+
+                queue.splice(index, 1);
+                client.sendResponse({ queue: queue, id: message.data.id }, message, client.SendType.Broadcast);
+
+                break;
+            }
+
             case "get-video-metadata": {
                 if (!message.data.url)
                     return client.sendError("No video url specified", message);
