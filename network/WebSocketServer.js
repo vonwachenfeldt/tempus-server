@@ -137,7 +137,8 @@ const handleMessage = async (client, message) => {
                     channel,
                     url,
                     videoId,
-                    duration
+                    duration,
+                    id: Utils.createId()
                 };
 
                 if (client.session.videoData.queue.length == 0 && !client.session.videoData.currentVideoId) {
