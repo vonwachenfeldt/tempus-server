@@ -94,27 +94,7 @@ const handleMessage = async (client, message) => {
             }
 
             case "play-next-video": {
-                if (!client.session)
-                    return client.sendError("You are not in a session", message);
-
-                // Only play the next video if one exists
-                if (client.session.videoData.queue.length == 0)
-                    return;
-
-                console.log(client.session.videoData.queue);
-
-                const nextVideo = JSON.parse(JSON.stringify(client.session.videoData.queue[0]));
-                client.session.videoData.queue.shift(); // Remove the video from the queue
-
-                const videoId = Utils.getVideoId(nextVideo.url);
-
-                client.session.videoData.currentVideoId = videoId;
-
-                console.log("Playing next video '%s'", videoId);
-
-
-
-                client.sendResponse({ video: nextVideo, queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
+                playNextVideo(client);
 
                 break;
             }
@@ -160,9 +140,15 @@ const handleMessage = async (client, message) => {
                     duration
                 };
 
-                client.session.videoData.queue.push(data);
 
-                console.log("Queing video '%s'", data.videoId);
+                if (client.session.videoData.queue.length == 0) {
+                    // Add
+                    client.session.videoData.queue.push(data);
+                    playNextVideo(client);
+                } else {
+                    client.session.videoData.queue.push(data);
+                    console.log("Queing video '%s'", data.videoId);
+                }
 
                 client.sendResponse({ queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
 
@@ -291,6 +277,26 @@ function broadcastClients(client, manualDiff = 0) {
     }
 
     client.sendResponse(response, {type: "broadcast-clients"}, client.SendType.Broadcast);
+}
+
+const playNextVideo = (client, message = { type: "play-next-video" }) => {
+    if (!client.session)
+        return client.sendError("You are not in a session", message);
+
+    // Only play the next video if one exists
+    if (client.session.videoData.queue.length == 0)
+        return;
+
+    const nextVideo = JSON.parse(JSON.stringify(client.session.videoData.queue[0]));
+    client.session.videoData.queue.shift(); // Remove the video from the queue
+
+    const videoId = Utils.getVideoId(nextVideo.url);
+
+    client.session.videoData.currentVideoId = videoId;
+
+    console.log("Playing next video '%s'", videoId);
+
+    client.sendResponse({ video: nextVideo, queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
 }
 
 module.exports = start;
