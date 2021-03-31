@@ -14,14 +14,6 @@ let ws;
 
 var sessions = new Map();
 
-const start = (server, path) => {
-    ws = new WebSocketServer({ server, path });
-
-    console.log("Websocket server running on path '%s'", path)
-
-    ws.on("connection", onConnection);
-}
-
 const onConnection = (conn) => {
     // Create client
     const client = new Client(conn, Utils.createId());
@@ -57,7 +49,8 @@ const handleMessage = async (client, message) => {
                 }
 
                 client.sendResponse(response, message, client.SendType.Single);
-                broadcastClients(client);
+                
+                broadcastClients(client.session);
 
                 break;
             } 
@@ -255,12 +248,12 @@ const pingPong = (client) => {
 
 const disconnectClient = (client) => {
     const session = client.session;
-            
+
     // If the client is in a session
     if (session) {
-        broadcastClients(client, -1);
-
         session.leave(client); // Remove the client from the session
+
+        broadcastClients(session);
 
         if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
             console.log("Client '%s' disconnected, %s clients remaining in session '%s'", client.id, session.clients.size, session.id);
@@ -284,14 +277,12 @@ const disconnectClient = (client) => {
     client.terminate();
 }
 
-function broadcastClients(client, manualDiff = 0) {
-    var watchers =  client.session.clients.size + manualDiff;
-
+function broadcastClients(session) {
     const response = {
-        watchers
+        watchers: session.clients.size
     }
 
-    client.sendResponse(response, {type: "broadcast-clients"}, client.SendType.Broadcast);
+    session.broadcastResponse(response, { type: "broadcast-clients" });
 }
 
 const playNextVideo = (client, message = { type: "play-next-video" }) => {
@@ -314,4 +305,4 @@ const playNextVideo = (client, message = { type: "play-next-video" }) => {
     client.sendResponse({ video: nextVideo, queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
 }
 
-module.exports = start;
+module.exports.onConnection = onConnection;
