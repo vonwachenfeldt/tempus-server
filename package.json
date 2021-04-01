@@ -1,15 +1,17 @@
 {
-    "name": "websocket-server-template",
+    "name": "tempus-server",
     "version": "1.0.0",
-    "description": "Websocket server template",
+    "description": "Tempus server",
     "main": "server.js",
     "scripts": {
         "dev": "nodemon server.js",
-        "start": "node server.js"
+        "start": "node server.js",
+        "live-reload": "node live-reload.js"
     },
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@thebigbear/live-reload": "^1.0.3",
         "dotenv": "^8.2.0",
         "express": "^4.17.1",
         "express-ws-routes": "^1.1.0",
