@@ -1,16 +1,11 @@
-const WebSocketServer = require("ws").Server;
-
 const Client = require("./Client");
 
 const Utils = require("../utils/Utils");
 
 const YoutubeApi = require("../utils/YoutubeApi");
+const { playVideoFromQueue } = require("../utils/Api");
 
 const pingTime = process.env.WEBSOCKET_PING_TIME || 30000;
-
-const logPingMessages = process.env.WEBSOCKET_LOG_PINGPONG_MESSAGES || false;
-
-let ws;
 
 var sessions = new Map();
 
@@ -35,6 +30,9 @@ const handleMessage = async (client, message) => {
     try {
         message = JSON.parse(message); // Parse
 
+        // Aliases
+        const originalMessage = JSON.parse(JSON.stringify(message));
+
         switch (message.type) {
             // Sessions
             case "join-session": {
@@ -45,10 +43,11 @@ const handleMessage = async (client, message) => {
                 const response = {
                     sessionId: sessionId,
                     clientId: client.id,
-                    state: client.session.videoData
+                    isAdmin: client.isAdmin,
+                    state: client.session.data
                 }
 
-                client.sendResponse(response, message, client.SendType.Single);
+                client.sendResponse(response, originalMessage, client.SendType.Single);
                 
                 broadcastClients(client.session);
 
@@ -57,154 +56,164 @@ const handleMessage = async (client, message) => {
 
             case "state-update": {
                 if (!client.session)
-                    return client.sendError("You are not in a session", message);
+                    return client.sendError("You are not in a session", originalMessage);
 
-                const { timestamp, playbackSpeed, isPaused, currentVideoId } = message.data;
+                const { timestamp, playbackSpeed, isPaused } = message.data;
 
-                client.session.videoData.timestamp = timestamp;
-                client.session.videoData.playbackSpeed = playbackSpeed;
-                client.session.videoData.isPaused = isPaused;
-                client.session.videoData.currentVideoId = currentVideoId;
+                const sessionData = client.sessionData();
+                const video = sessionData.queue[sessionData.currentQueueIndex];
+                if (!video) return client.sendError("[Tempus] That video doesn't exist in the queue", originalMessage);
 
-                client.sendResponse(message.data, message, client.SendType.Broadcast);
+                video.timestamp = timestamp;
+                video.playbackSpeed = playbackSpeed;
+                video.isPaused = isPaused;
+
+                client.sendResponse({ state: client.sessionData() }, originalMessage, client.SendType.Broadcast);
 
                 break;
             }
 
-            case "play-video": {
-                if (!client.session)
-                    return client.sendError("You are not in a session", message);
+            // case "play-video": {
+            //     if (!client.session)
+            //         return client.sendError("You are not in a session", originalMessage);
 
-                const videoId = Utils.getVideoId(message.data.videoUrl);
+            //     const videoId = Utils.getVideoId(message.data.videoUrl);
 
-                client.session.videoData.currentVideoId = videoId;
 
-                console.log("Playing video '%s'", videoId);
+            //     client.session.videoData.currentVideoId = videoId;
 
-                client.sendResponse({ currentVideoId: message.data.videoId }, message, client.SendType.Broadcast);
+            //     console.log("Playing video '%s'", videoId);
+
+            //     client.sendResponse({ currentVideoId: message.data.videoId }, message, client.SendType.Broadcast);
+
+            //     break;
+            // }
+
+            case "play-video-from-queue": {
+                try {
+                    const response = playVideoFromQueue(client, { queueIndex: message.data.queueIndex });
+
+                    client.sendResponse(response, originalMessage, client.SendType.Broadcast);
+                } catch (error) {
+                    client.sendError(error, originalMessage);
+                }
 
                 break;
             }
 
             case "play-next-video": {
-                playNextVideo(client);
+                try {
+                    if (!client.session) return client.sendError("You are not in a session", originalMessage);
 
-                break;
-            }
+                    const queueIndex = client.sessionData().currentQueueIndex + 1;
+                    // Bounds check
+                    if (queueIndex > client.sessionData().queue.length) return;
 
-            case "queue-video": {
-                if (!client.session)
-                    return client.sendError("You are not in a session", message);
+                    const response = playVideoFromQueue(client, { queueIndex });
 
-                    if (!message.data.url)
-                    return client.sendError("No video url specified", message);
-
-                const url = message.data.url;
-                const videoId = Utils.getVideoId(message.data.url);
-                if (!videoId)
-                    return client.sendError("Not a youtube video", message);
-
-                const videoData = await YoutubeApi.getVideoDetails(videoId);
-                if (!videoData.items)
-                    return client.sendError("Failed to get video details", message);
-
-                const title = videoData.items[0].snippet.title;
-                const channel = videoData.items[0].snippet.channelTitle;
-
-                // Get video duration in minutes
-                const durationString = videoData.items[0].contentDetails.duration
-                const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
-    
-                // Minutes, seconds
-                console.log(arrOfTime)
-                var duration = 0;
-                if (arrOfTime.length === 1) // Seconds
-                    duration = parseInt(arrOfTime[0]) / 60;
-                else if (arrOfTime.length === 2) // Minutes, seconds
-                    duration = parseInt(arrOfTime[0]) + parseInt(arrOfTime[1]) / 60;
-                else if (arrOfTime.length === 3) // Hours, minutes, seconds
-                    duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
-
-                const data = {
-                    title,
-                    channel,
-                    url,
-                    videoId,
-                    duration,
-                    id: Utils.createId()
-                };
-
-                if (client.session.videoData.queue.length == 0 && !client.session.videoData.currentVideoId) {
-                    // Add
-                    client.session.videoData.queue.push(data);
-                    playNextVideo(client);
-                } else {
-                    client.session.videoData.queue.push(data);
-                    console.log("Queing video '%s'", data.videoId);
+                    client.sendResponse(response, originalMessage, client.SendType.Broadcast);
+                } catch (error) {
+                    client.sendError(error, originalMessage);
                 }
 
-                client.sendResponse({ queue: client.session.videoData.queue }, message, client.SendType.Broadcast);
-
                 break;
             }
 
-            case "delete-queue-entry": {
-                if (!client.session)
-                    return client.sendError("You are not in a session", message);
-                
-                var queue = client.session.videoData.queue;
-                const entry = queue.find(item => item.id == message.data.id);
-                if(!entry) return client.sendError("Invalid ID", message);
-                const index = queue.indexOf(entry);
-
-                queue.splice(index, 1);
-                client.sendResponse({ queue: queue, id: message.data.id }, message, client.SendType.Broadcast);
-
-                break;
-            }
-
-            case "get-video-metadata": {
-                if (!message.data.url)
-                    return client.sendError("No video url specified", message);
+            case "add-video-to-queue": {
+                if (!client.session) return client.sendError("You are not in a session", originalMessage);
 
                 const url = message.data.url;
-                const videoId = Utils.getVideoId(message.data.url);
-                if (!videoId)
-                    return client.sendError("Not a youtube video", message);
+                if (!url) return client.sendError("No video url specified", originalMessage);
+
+                const videoId = Utils.getVideoId(url);
+                if (!videoId) return client.sendError("Not a youtube video", originalMessage);
+
+                // Check for duplicates
+                if (client.sessionData().queue.find(video => video.id === videoId))
+                    return client.sendError("That video already exists in the queue", originalMessage)
 
                 const videoData = await YoutubeApi.getVideoDetails(videoId);
-                if (!videoData.items)
-                    return client.sendError("Failed to get video details", message);
+                if (!videoData)
+                    return client.sendError("Failed to get video details", originalMessage);
 
-                const title = videoData.items[0].snippet.title;
-                const channel = videoData.items[0].snippet.channelTitle;
+                // Create a video object to add to the queue 
+                const video = { ...videoData, url };
+                client.sessionData().queue.push(video);
 
-                // Get video duration in minutes
-                const durationString = videoData.items[0].contentDetails.duration
-                const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
-    
-                // Minutes, seconds
-                console.log(arrOfTime)
-                var duration = 0;
-                if (arrOfTime.length === 1) // Seconds
-                    duration = parseInt(arrOfTime[0]) / 60;
-                else if (arrOfTime.length === 2) // Minutes, seconds
-                    duration = parseInt(arrOfTime[0]) + parseInt(arrOfTime[1]) / 60;
-                else if (arrOfTime.length === 3) // Hours, minutes, seconds
-                    duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
+                // Play the video if it's the first in the queue
+                if (client.sessionData().queue.length == 1) {
+                    try {
+                        const response = playVideoFromQueue(client, { queueIndex: 0 });
+                        client.sendResponse(response, { type: "play-video-from-queue"}, client.SendType.Broadcast);
+                    } catch (error) {
+                        client.sendError(error, { type: "play-video-from-queue"});
+                    }
+                }
 
-                const response = {
-                    title,
-                    channel,
-                    url,
-                    videoId,
-                    duration
-                };
-            
-                client.sendResponse(response, message, client.SendType.Broadcast);
+                client.sendResponse({ video, queue: client.sessionData().queue }, originalMessage, client.SendType.Broadcast);
 
                 break;
             }
+
+            case "delete-video-from-queue": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", originalMessage);
+                
+                const queue = client.sessionData().queue;
+                const entry = queue.find(item => item.id == message.data.id);
+                if (!entry) return client.sendError("Failed to delete video. Invalid ID", originalMessage);
+                
+                // Remove that specific index
+                const index = queue.indexOf(entry);
+                queue.splice(index, 1);
+
+                client.sendResponse({ deleted: message.data.id, queue: queue }, originalMessage, client.SendType.Broadcast);
+
+                break;
+            }
+
+            // case "get-video-metadata": {
+            //     if (!message.data.url)
+            //         return client.sendError("No video url specified", message);
+
+            //     const url = message.data.url;
+            //     const videoId = Utils.getVideoId(message.data.url);
+            //     if (!videoId)
+            //         return client.sendError("Not a youtube video", message);
+
+            //     const videoData = await YoutubeApi.getVideoDetails(videoId);
+            //     if (!videoData.items)
+            //         return client.sendError("Failed to get video details", message);
+
+            //     const title = videoData.items[0].snippet.title;
+            //     const channel = videoData.items[0].snippet.channelTitle;
+
+            //     // Get video duration in minutes
+            //     const durationString = videoData.items[0].contentDetails.duration
+            //     const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
+    
+            //     // Minutes, seconds
+            //     console.log(arrOfTime)
+            //     var duration = 0;
+            //     if (arrOfTime.length === 1) // Seconds
+            //         duration = parseInt(arrOfTime[0]) / 60;
+            //     else if (arrOfTime.length === 2) // Minutes, seconds
+            //         duration = parseInt(arrOfTime[0]) + parseInt(arrOfTime[1]) / 60;
+            //     else if (arrOfTime.length === 3) // Hours, minutes, seconds
+            //         duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
+
+            //     const response = {
+            //         title,
+            //         channel,
+            //         url,
+            //         videoId,
+            //         duration
+            //     };
+            
+            //     client.sendResponse(response, message, client.SendType.Broadcast);
+
+            //     break;
+            // }
 
             case "broadcast-clients": {
 
@@ -217,8 +226,6 @@ const handleMessage = async (client, message) => {
             case "pong": {
                 client.isAlive = true; // The client is still connected
 
-                //if (logPingMessages) console.log("Received pong from client '%s'", client.id);
-                
                 break;
             }
 
@@ -240,8 +247,6 @@ const pingPong = (client) => {
 
     // Default the client to being disconnected, but if a pong message is received from them they are considered still alive
     client.isAlive = false;
-
-    //if (logPingMessages) console.log("Sending ping to client '%s'", client.id);
 
     client.ping();
 }

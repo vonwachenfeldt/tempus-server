@@ -4,6 +4,7 @@ class Client {
     constructor(conn, id) {
         this.conn = conn;
         this.id = id;
+        this.isAdmin = false;
 
         this.isAlive = true;
 
@@ -15,6 +16,12 @@ class Client {
             Single: 0,
             Broadcast: 1, 
         }
+    }
+
+    sessionData() { 
+        if (!this.session) return;
+
+        return this.session.data;
     }
 
     send(data) {
@@ -44,6 +51,9 @@ class Client {
         if (!session) {
             session = new Session(sessionId);
             sessions.set(sessionId, session);
+
+            // Make the client the 'admin'
+            this.isAdmin = true;
         }
 
         // Leave the current session if one exists
