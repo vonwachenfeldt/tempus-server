@@ -208,6 +208,8 @@ const handleMessage = async (client, message) => {
                 const video = { ...videoData, url };
                 client.sessionData().queue.push(video);
 
+                client.sendResponse({ video, queue: client.sessionData().queue }, originalMessage, client.SendType.Broadcast);
+
                 // Play the video if it's the first in the queue
                 if (client.sessionData().queue.length == 1) {
                     try {
@@ -220,10 +222,6 @@ const handleMessage = async (client, message) => {
                         client.sendError(error, { type: "play-video-from-queue" });
                     }
                 }
-
-                client.sendResponse({ video, queue: client.sessionData().queue }, originalMessage, client.SendType.Broadcast);
-
-                console.log(video)
 
                 break;
             }
