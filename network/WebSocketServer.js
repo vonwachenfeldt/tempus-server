@@ -43,8 +43,6 @@ const handleMessage = async (client, message) => {
                 // Calculate the video timestamp as a long time could have passed since the last state update
                 const { lastStateUpdateTime } = client.sessionData();
 
-                console.log(lastStateUpdateTime);
-
                 if (lastStateUpdateTime != null) {
                     const passedTime = (Date.now() - client.sessionData().lastStateUpdateTime) / 1000; // In seconds
                     
