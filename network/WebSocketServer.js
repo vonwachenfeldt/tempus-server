@@ -225,6 +225,8 @@ const handleMessage = async (client, message) => {
 
                 client.sendResponse({ video, queue: client.sessionData().queue }, originalMessage, client.SendType.Broadcast);
 
+                console.log(video)
+
                 break;
             }
 
