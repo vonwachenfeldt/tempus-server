@@ -13,8 +13,12 @@ const getVideoDetails = async (videoId) => {
     const videoData = await getVideoDetailsPure(videoId);
     if (!videoData.items) return;
 
+    console.log(videoData.items[0].snippet.thumbnails.default)
+
+
     const title = videoData.items[0].snippet.title;
     const channel = videoData.items[0].snippet.channelTitle;
+    const thumbnail = videoData.items[0].snippet.thumbnails.medium;
 
     // Get video duration in minutes
     const durationString = videoData.items[0].contentDetails.duration
@@ -29,12 +33,17 @@ const getVideoDetails = async (videoId) => {
     else if (arrOfTime.length === 3) // Hours, minutes, seconds
         duration = parseInt(arrOfTime[0]) * 60 + parseInt(arrOfTime[1]) + parseInt(arrOfTime[2]) / 60;
 
+
+
+
+
     return {
         id: videoId,
         title,
         channel,
         videoId,
-        duration
+        duration,
+        thumbnail
     };
 }
 
