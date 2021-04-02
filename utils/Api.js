@@ -11,6 +11,14 @@ const playVideoFromQueue = (client, { queueIndex }) => {
         throw "That video doesn't exist in the queue";
 
     sessionData.currentQueueIndex = queueIndex;
+    
+    // Reset video state
+    const video = sessionData.queue[sessionData.currentQueueIndex];
+    video.timestamp = 0;
+    video.playbackSpeed = 1;
+    video.isPaused = false;
+
+    sessionData.lastStateUpdateTime = Date.now();
 
     console.log("[Tempus] Playing video '%s' at index", sessionData.queue[queueIndex].title, queueIndex);
 

@@ -14,13 +14,13 @@ const onConnection = (conn) => {
     const client = new Client(conn, Utils.createId());
 
     if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
-        console.log("Client '%s' connected", client.id); 
+        console.log("Client '%s' connected", client.id);
 
     // Remove the client from any sessions
     conn.on("close", () => disconnectClient(client));
 
     // Handle messages
-    conn.on("message", message => handleMessage(client, message)); 
+    conn.on("message", message => handleMessage(client, message));
 
     // Setup ping pong
     client.pingPongTimer = setInterval(() => pingPong(client), pingTime);
@@ -40,6 +40,28 @@ const handleMessage = async (client, message) => {
 
                 client.joinSession(sessions, sessionId);
 
+                // Calculate the video timestamp as a long time could have passed since the last state update
+                const { lastStateUpdateTime } = client.sessionData();
+
+                console.log(lastStateUpdateTime);
+
+                if (lastStateUpdateTime != null) {
+                    const passedTime = (Date.now() - client.sessionData().lastStateUpdateTime) / 1000; // In seconds
+                    
+                    const video = client.session.getPlayingVideo();
+                    if (video) {
+                        const oldTimestamp = video.timestamp;
+                        const newTimestamp = oldTimestamp + passedTime * video.playbackSpeed;
+                        video.timestamp = newTimestamp;
+
+                        client.sessionData().lastStateUpdateTime = Date.now();
+
+                        console.log("Updated video timestamp from %s to %s", oldTimestamp, newTimestamp);
+
+                        //client.sendResponse({ state: client.sessionData() }, { type: "state-update" }, client.SendType.Broadcast);
+                    }
+                }
+
                 const response = {
                     sessionId: sessionId,
                     clientId: client.id,
@@ -48,27 +70,75 @@ const handleMessage = async (client, message) => {
                 }
 
                 client.sendResponse(response, originalMessage, client.SendType.Single);
-                
+
                 broadcastClients(client.session);
 
                 break;
-            } 
+            }
 
             case "state-update": {
                 if (!client.session)
                     return client.sendError("You are not in a session", originalMessage);
 
-                const { timestamp, playbackSpeed, isPaused } = message.data;
+                const { timestamp, playbackSpeed, isPaused, firstLoad } = message.data;
 
                 const sessionData = client.sessionData();
                 const video = sessionData.queue[sessionData.currentQueueIndex];
                 if (!video) return client.sendError("[Tempus] That video doesn't exist in the queue", originalMessage);
 
-                video.timestamp = timestamp;
+                // if (firstLoad && !video.hasLoaded) {
+                //     console.log("Video has loaded for the first time");
+
+                //     // Start internal
+                //     const dur = 1000;
+                //     if (client.timestampTimer) clearInterval(client.timestampTimer);
+
+                //     client.timestampTimer = setInterval(() => {
+                //         if (!client.session) return;
+
+                //         const video = client.session.playingVideo();
+                //         if (video.timestamp == null) return;
+                //         if (video.isPaused) return;
+
+                //         video.timestamp += dur / 1000;
+
+                //         console.log("Video timestamp:", video.timestamp);
+                //     }, dur);
+                // }
+
+                const timeForMessage = Math.abs(Date.now() - message.date) / 1000;
+                // const totalTimeForMessage = timeForMessage * 2; // Assume it takes the same amount of time to be sent back
+
+                const timestampDiff = ((timestamp + timeForMessage) - video.timestamp);
+                const timestampAdjusted = timestamp + timeForMessage;
+
+                // console.log("The server timestamp is %s off. Acutal client value is", timestampDiff, timestamp);
+
+                video.timestamp = timestampAdjusted;
                 video.playbackSpeed = playbackSpeed;
                 video.isPaused = isPaused;
 
+                sessionData.lastStateUpdateTime = message.date;
+
+                if (firstLoad) video.hasLoaded = true;
+
+                console.log("Video timestamp:", timestampAdjusted, timeForMessage);
+
                 client.sendResponse({ state: client.sessionData() }, originalMessage, client.SendType.Broadcast);
+
+                break;
+            }
+
+            case "timestamp-update": {
+                if (!client.session)
+                    return client.sendError("You are not in a session", originalMessage);
+
+                const sessionData = client.sessionData();
+                const video = sessionData.queue[sessionData.currentQueueIndex];
+
+                const timeForMessage = Date.now() - message.date;
+
+                console.log(timeForMessage);
 
                 break;
             }
@@ -144,9 +214,12 @@ const handleMessage = async (client, message) => {
                 if (client.sessionData().queue.length == 1) {
                     try {
                         const response = playVideoFromQueue(client, { queueIndex: 0 });
-                        client.sendResponse(response, { type: "play-video-from-queue"}, client.SendType.Broadcast);
+                        client.sendResponse(response, { type: "play-video-from-queue" }, client.SendType.Broadcast);
                     } catch (error) {
-                        client.sendError(error, { type: "play-video-from-queue"});
+                        if (typeof error === "object")
+                            console.error(error);
+
+                        client.sendError(error, { type: "play-video-from-queue" });
                     }
                 }
 
@@ -158,11 +231,11 @@ const handleMessage = async (client, message) => {
             case "delete-video-from-queue": {
                 if (!client.session)
                     return client.sendError("You are not in a session", originalMessage);
-                
+
                 const queue = client.sessionData().queue;
                 const entry = queue.find(item => item.id == message.data.id);
                 if (!entry) return client.sendError("Failed to delete video. Invalid ID", originalMessage);
-                
+
                 // Remove that specific index
                 const index = queue.indexOf(entry);
                 queue.splice(index, 1);
@@ -191,7 +264,7 @@ const handleMessage = async (client, message) => {
             //     // Get video duration in minutes
             //     const durationString = videoData.items[0].contentDetails.duration
             //     const arrOfTime = durationString.replace("PT", "").replace("H", " ").replace("M", " ").replace("S", "").split(" ");
-    
+
             //     // Minutes, seconds
             //     console.log(arrOfTime)
             //     var duration = 0;
@@ -209,7 +282,7 @@ const handleMessage = async (client, message) => {
             //         videoId,
             //         duration
             //     };
-            
+
             //     client.sendResponse(response, message, client.SendType.Broadcast);
 
             //     break;
@@ -273,7 +346,7 @@ const disconnectClient = (client) => {
     } else {
         if (webSocketLogLevel >= WebSocketLogLevels.Minimal)
             console.log("Client '%s' disconnected", client.id);
-    } 
+    }
 
     // Remove the ping pong
     clearInterval(client.pingPongTimer);

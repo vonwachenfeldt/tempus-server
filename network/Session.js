@@ -5,10 +5,18 @@ class Session
         this.id = id;
         this.clients = new Set; 
 
+        this.timestampTimer = null;
+
         this.data = {
             currentQueueIndex: 0,
+            lastStateUpdateTime: null,
             queue: []
         };
+    }
+
+    getPlayingVideo()
+    {
+        return this.data.queue[this.data.currentQueueIndex];    
     }
 
     broadcast(data)
