@@ -48,16 +48,17 @@ const handleMessage = async (client, message) => {
                     
                     const video = client.session.getPlayingVideo();
                     if (video) {
-                        const oldTimestamp = video.timestamp;
-                        const newTimestamp = oldTimestamp + passedTime * video.playbackSpeed;
-                        video.timestamp = newTimestamp;
-
                         client.sessionData().lastStateUpdateTime = Date.now();
-
-                        console.log("Updated video timestamp from %s to %s", oldTimestamp, newTimestamp);
-
-                        //client.sendResponse({ state: client.sessionData() }, { type: "state-update" }, client.SendType.Broadcast);
-                    }
+                        if (!video.isPaused) {
+                            const oldTimestamp = video.timestamp;
+                            const newTimestamp = oldTimestamp + passedTime * video.playbackSpeed;
+                            video.timestamp = newTimestamp;
+    
+                            client.sessionData().lastStateUpdateTime = Date.now();
+    
+                            console.log("Updated video timestamp from %s to %s", oldTimestamp, newTimestamp);
+                        }
+                    } 
                 }
 
                 const response = {
